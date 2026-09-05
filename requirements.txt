@@ -1,0 +1,4 @@
+pykrx>=1.0.45
+pandas>=2.0
+pyarrow>=14
+requests>=2.31

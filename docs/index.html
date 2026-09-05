@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#E4E7EB">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="급등초입">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>급등 초입 스캔</title>
+<style>
+  :root{
+    --paper:#E4E7EB; --panel:#fff; --ink:#171A1F; --muted:#737B85;
+    --rule:#CBD1D8; --up:#C0392B; --down:#1B5FA8; --flag:#2F5D50; --bar:#3A4753;
+    --pad:14px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    background:var(--paper); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Pretendard",
+      "Segoe UI","Malgun Gothic",sans-serif;
+    font-size:15px; line-height:1.45;
+    font-variant-numeric:tabular-nums; font-feature-settings:"tnum" 1;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  header{
+    position:sticky; top:0; z-index:5; background:var(--paper);
+    border-bottom:1px solid var(--rule);
+    padding:calc(env(safe-area-inset-top) + 10px) var(--pad) 8px;
+  }
+  h1{font-size:17px; font-weight:650; margin:0 0 2px; letter-spacing:-.01em}
+  .sub{font-size:12.5px; color:var(--muted); display:flex; gap:10px; flex-wrap:wrap}
+  .sub b{font-weight:600; color:var(--ink)}
+  .sorts{display:flex; gap:6px; margin-top:9px}
+  .sorts button{
+    font:inherit; font-size:13px; padding:5px 11px; border-radius:999px;
+    border:1px solid var(--rule); background:transparent; color:var(--muted); cursor:pointer;
+  }
+  .sorts button[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:#fff}
+  .sorts button:focus-visible{outline:2px solid var(--flag); outline-offset:2px}
+
+  ul{list-style:none; margin:0; padding:0}
+  li{border-bottom:1px solid var(--rule); background:var(--panel)}
+  .row{display:grid; grid-template-columns:5px 1fr auto; gap:0 11px;
+       align-items:center; padding:11px var(--pad) 11px 0; cursor:pointer}
+  .gauge{align-self:stretch; background:var(--rule); position:relative; border-radius:0 3px 3px 0}
+  .gauge i{position:absolute; left:0; bottom:0; width:100%; background:var(--bar);
+           border-radius:0 3px 3px 0}
+  .nm{font-weight:600; letter-spacing:-.01em}
+  .code{font-size:12px; color:var(--muted); font-weight:400; margin-left:5px}
+  .chips{display:flex; gap:4px; flex-wrap:wrap; margin-top:5px}
+  .chip{font-size:11px; padding:1.5px 6px; border-radius:3px;
+        background:#E8EEEB; color:var(--flag); white-space:nowrap}
+  .chip.hi{background:var(--flag); color:#fff}
+  .px{text-align:right; white-space:nowrap}
+  .px .p{font-weight:600}
+  .px .d{font-size:12.5px}
+  .up{color:var(--up)} .down{color:var(--down)} .flat{color:var(--muted)}
+  .sc{font-size:12px; color:var(--muted); margin-top:3px}
+  .sc b{color:var(--ink); font-weight:650; font-size:14px}
+
+  .detail{display:none; padding:0 var(--pad) 14px; border-top:1px dashed var(--rule);
+          margin:0 0 0 5px; background:#FAFBFC}
+  li.open .detail{display:block}
+  li.open .row{padding-bottom:9px}
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:7px 10px; margin-top:11px}
+  .cell{font-size:12px; color:var(--muted)}
+  .cell b{display:block; font-size:14px; color:var(--ink); font-weight:600}
+  .cell.dim b{color:var(--muted); font-weight:500}
+  .plan{margin-top:11px; font-size:13px; display:flex; gap:14px; flex-wrap:wrap}
+  .plan span b{font-weight:600}
+  .links{margin-top:12px; display:flex; gap:8px}
+  .links a{font-size:13px; color:var(--flag); text-decoration:none;
+           border:1px solid var(--rule); border-radius:6px; padding:5px 10px}
+
+  .note{padding:16px var(--pad) 28px; font-size:12.5px; color:var(--muted); line-height:1.6}
+  .empty{padding:56px var(--pad); text-align:center; color:var(--muted)}
+  .empty b{display:block; color:var(--ink); font-size:16px; margin-bottom:6px; font-weight:600}
+  @media (prefers-reduced-motion:no-preference){
+    .detail{animation:open .16s ease-out}
+    @keyframes open{from{opacity:0}to{opacity:1}}
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>급등 초입 스캔</h1>
+  <div class="sub" id="meta">불러오는 중…</div>
+  <div class="sorts" id="sorts" role="group" aria-label="정렬">
+    <button data-k="score" aria-pressed="true">종합</button>
+    <button data-k="chart" aria-pressed="false">차트</button>
+    <button data-k="fin" aria-pressed="false">재무</button>
+    <button data-k="change" aria-pressed="false">등락</button>
+  </div>
+</header>
+<ul id="list"></ul>
+<div class="note" id="note"></div>
+<script src="app.js"></script>
+</body>
+</html>
