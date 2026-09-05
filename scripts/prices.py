@@ -75,6 +75,12 @@ def _yf():
         import yfinance as yf
     except ImportError:
         sys.exit("yfinance 가 필요합니다: pip install yfinance")
+    # 상장폐지·데이터없음 경고를 종목마다 뱉어 로그가 수천 줄로 불어난다.
+    # 어차피 해당 종목은 symbols.json 에 빈 값으로 기록되므로 출력은 불필요하다.
+    import logging
+    for name in ("yfinance", "yfinance.utils", "peewee", "urllib3"):
+        logging.getLogger(name).setLevel(logging.CRITICAL)
+    logging.getLogger().setLevel(logging.ERROR)
     return yf
 
 
