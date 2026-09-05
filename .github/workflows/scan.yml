@@ -48,6 +48,8 @@ jobs:
           restore-keys: findb-
 
       - name: 일봉 갱신
+        env:
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
         run: python scripts/prices.py --data data --days 520
 
       - name: 재무 DB (없거나 요청 시에만)
