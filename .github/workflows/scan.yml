@@ -1,1 +1,78 @@
+name: daily scan
 
+on:
+  schedule:
+    # 07:10 UTC = 16:10 KST (장 마감 15:30 이후). GitHub cron 은 UTC 이고
+    # 부하에 따라 5~20분 지연될 수 있다. 월~금만 실행하고 휴장일은 스크립트가 알아서 빠진다.
+    - cron: "10 7 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      rebuild_fin:
+        description: "DART 재무 DB 재수집 (분기에 한 번이면 충분)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: daily-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # 일봉 캐시. 매 실행마다 새 키로 저장하고 최신 것을 복원한다.
+      # 캐시가 날아가면 prices.py 가 알아서 전체 백필하므로 자가 복구된다.
+      - uses: actions/cache@v4
+        with:
+          path: data
+          key: prices-${{ github.run_id }}
+          restore-keys: prices-
+
+      - uses: actions/cache@v4
+        with:
+          path: fin
+          key: findb-${{ github.run_id }}
+          restore-keys: findb-
+
+      - name: 일봉 갱신
+        run: python scripts/prices.py --data data --days 520
+
+      - name: 재무 DB (없거나 요청 시에만)
+        if: ${{ inputs.rebuild_fin || hashFiles('fin/fin.db') == '' }}
+        env:
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+        run: |
+          if [ -z "$DART_API_KEY" ]; then
+            echo "DART_API_KEY 시크릿이 없습니다. 재무 점수 없이 진행합니다."
+            exit 0
+          fi
+          mkdir -p fin
+          python scripts/build_db.py --years 2022 2025 --db fin/fin.db --resume
+
+      - name: 조건 스캔
+        run: python scripts/scan.py --data data --out docs/result.json --fin fin/fin.db
+
+      - name: 결과 커밋
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/result.json
+          if git diff --staged --quiet; then
+            echo "변경 없음 (휴장일일 수 있음)"
+          else
+            git commit -m "scan: $(date -u +%Y-%m-%d)"
+            git push
+          fi
