@@ -55,7 +55,7 @@ function row(it) {
         ${cell("112일선", won(it.ma.ma112))}
         ${cell("224일선", won(it.ma.ma224))}
         ${cell("448일선", won(it.ma.ma448))}
-        ${cell("시가총액", eok(it.cap))}
+        ${cell("거래대금(20일)", eok(it.value))}
         ${cell("고점 대비", pct(it.fromPeak))}
         ${cell("거래량 배수", it.volRatio ? it.volRatio.toFixed(2) + "x" : "—")}
         ${cell("매출 3년", pct(it.revCagr), it.revCagr == null)}

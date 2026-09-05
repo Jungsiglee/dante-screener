@@ -5,7 +5,7 @@
 
 ```
 GitHub Actions  매일 16:10 KST cron
-  prices.py   pykrx 일봉 증분 수집 (Actions 캐시)
+  prices.py   yfinance 일봉 증분 수집 (Actions 캐시)
   build_db.py DART 재무 (분기 1회)
   scan.py     이평선 계산 → 조건 판정 → docs/result.json 커밋
         ↓
@@ -51,11 +51,13 @@ GitHub Pages  (main 브랜치 /docs)
 - 워크플로 YAML, 파이썬, JS 문법
 
 **미검증 — 첫 실행 때 반드시 확인할 것:**
-1. **GitHub Actions 러너는 해외 IP다.** KRX(pykrx)와 DART가 해외 IP를 막을 수 있다.
-   DART 는 에러코드 012(접근할 수 없는 IP)로 나타난다. 이게 이 설계 전체의 단일 실패점이다.
-   막히면 → 집 PC 작업 스케줄러나 오라클 VM 으로 수집만 옮기고, Pages 는 그대로 쓴다.
-2. pykrx 컬럼명. `prices.py` 는 `종가`/`거래량`을, `meta` 는 `종목명`/`시가총액`/`거래대금`을
-   찾는다. 버전에 따라 다르면 그 줄만 고치면 된다.
+1. ~~GitHub Actions 러너 해외 IP 문제~~ → 2026-09-05 확인 완료.
+   DART 는 러너에서 정상(status 000). KRX 는 세션 없음(LOGOUT)으로 거부해 pykrx 를 버리고
+   일봉을 yfinance 로 교체했다. 종목 리스트는 DART corpCode 의 stock_code 를 쓴다.
+   대신 시가총액을 못 구해 필터를 20일 평균 거래대금(--min-value, 기본 10억)으로 바꿨다.
+2. **야후 데이터 품질.** 코스닥 일부 종목이 야후에 없을 수 있다(`symbols.json` 에 빈 값으로
+   기록된다). 첫 실행 후 확보 종목 수가 상장사 수 대비 얼마나 되는지 확인할 것.
+   수정주가 기준이라 pykrx 원주가와 과거 구간 값이 다를 수 있다.
 3. 예약 워크플로는 저장소 활동이 60일간 없으면 자동 비활성화된다. 봇 커밋이 활동으로
    인정되는지 확실치 않으니, 두 달쯤 뒤 Actions 탭이 멈춰 있지 않은지 한 번 볼 것.
 

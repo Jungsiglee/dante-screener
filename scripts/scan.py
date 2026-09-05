@@ -158,7 +158,8 @@ def main() -> int:
     ap.add_argument("--data", default="data")
     ap.add_argument("--out", default="docs/result.json")
     ap.add_argument("--fin", default=None, help="dart_fin 의 fin.db 경로 (선택)")
-    ap.add_argument("--min-cap", type=float, default=1e11)
+    ap.add_argument("--min-value", type=float, default=1e9,
+                    help="20일 평균 거래대금 하한 (기본 10억). 시가총액은 데이터원 교체로 못 구한다")
     ap.add_argument("--top", type=int, default=120)
     args = ap.parse_args()
 
@@ -181,9 +182,10 @@ def main() -> int:
     tick = meta.get("tickers", {})
     out["name"] = [tick.get(t, {}).get("name", t) for t in out.index]
     out["cap"] = [tick.get(t, {}).get("cap", 0) for t in out.index]
+    out["value"] = [tick.get(t, {}).get("value", 0) for t in out.index]
 
     before = len(out)
-    out = out[out["cap"] >= args.min_cap] if args.min_cap > 0 else out
+    out = out[out["value"] >= args.min_value] if args.min_value > 0 else out
     out = out[~out[[f"ma{w}" for w in MA_WINDOWS]].isna().any(axis=1)]
     out["score"] = (out["chart_score"] + out["fin_score"]).clip(0, 100)
     hits = out[out["chart_score"] > 0].sort_values("score", ascending=False).head(args.top)
@@ -199,6 +201,7 @@ def main() -> int:
             "close": int(r["close"]),
             "change": round(float(r["change"]) * 100, 2),
             "cap": int(r["cap"]),
+            "value": int(r["value"]),
             "stop": int(r["stop"]) if pd.notna(r["stop"]) else None,
             "t1": int(r["target1"]) if pd.notna(r["target1"]) else None,
             "t2": int(r["target2"]) if pd.notna(r["target2"]) else None,
@@ -219,7 +222,7 @@ def main() -> int:
         "sessions": have,
         "params": {
             "settleDays": SETTLE_DAYS, "lookback": LOOKBACK, "drawdown": DRAWDOWN,
-            "volMult": VOL_MULT, "crossRecent": CROSS_RECENT, "minCap": args.min_cap,
+            "volMult": VOL_MULT, "crossRecent": CROSS_RECENT, "minValue": args.min_value,
         },
         "weights": WEIGHTS,
         "items": [row(t, r) for t, r in hits.iterrows()],
