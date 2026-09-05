@@ -44,6 +44,40 @@ WEIGHTS = {
 KST = timezone(timedelta(hours=9))
 
 
+MIN_ROW_COVERAGE = 0.30   # 이 비율 미만의 종목만 값이 있는 날짜는 유령 거래일로 본다
+FFILL_LIMIT = 5           # 연속 결측을 직전 종가로 메우는 최대 일수
+
+
+def clean(close: pd.DataFrame, volume: pd.DataFrame):
+    """전종목 합집합 인덱스의 구멍을 메운다.
+
+    종목마다 상장일이 다르고 데이터원이 개별 종목의 거래일을 빠뜨리기도 해서,
+    전종목을 한 행렬에 모으면 종목별로 결측이 흩어져 생긴다. pandas rolling 은
+    창 안에 NaN 이 하나만 있어도 결과를 NaN 으로 만들기 때문에, 그대로 두면
+    448일선이 거의 전 종목에서 NaN 이 되어 통째로 걸러진다(2026-09-05, 2,697종목
+    중 1종목만 생존한 사고).
+
+    두 단계로 처리한다.
+      1) 유령 거래일 제거: 극소수 종목만 값이 있는 날짜 행을 버린다.
+      2) 종가는 직전 값으로 최대 FFILL_LIMIT 일까지 메운다(거래 없으면 가격 유지).
+         거래량은 0 으로 메운다(거래가 없었다는 뜻이므로).
+    상장 전 구간의 선행 결측은 메우지 않는다. 신규 상장주가 이평선 조건을
+    통과해서는 안 되기 때문이다.
+    """
+    n = close.shape[1]
+    if n:
+        keep = close.notna().sum(axis=1) >= max(1, int(n * MIN_ROW_COVERAGE))
+        dropped = int((~keep).sum())
+        if dropped:
+            print(f"  유령 거래일 {dropped}일 제거 ({len(close)} -> {int(keep.sum())}거래일)")
+        close, volume = close[keep], volume.reindex(close.index)
+
+    close = close.ffill(limit=FFILL_LIMIT)
+    volume = volume.reindex(columns=close.columns).fillna(0.0)
+    volume = volume.where(close.notna())
+    return close, volume
+
+
 def compute(close: pd.DataFrame, volume: pd.DataFrame) -> pd.DataFrame:
     ma = {w: close.rolling(w).mean() for w in MA_WINDOWS}
     last = close.index[-1]
@@ -174,6 +208,8 @@ def main() -> int:
     if have < max(MA_WINDOWS):
         print(f"경고: {have}거래일뿐입니다. 448일선은 NaN 이 됩니다.")
 
+    close, volume = clean(close, volume)
+
     out = compute(close, volume)
     out = add_fundamentals(out, args.fin)
 
@@ -186,7 +222,10 @@ def main() -> int:
 
     before = len(out)
     out = out[out["value"] >= args.min_value] if args.min_value > 0 else out
+    after_value = len(out)
     out = out[~out[[f"ma{w}" for w in MA_WINDOWS]].isna().any(axis=1)]
+    print(f"  거래대금 {args.min_value/1e8:.0f}억 이상: {before:,} -> {after_value:,}")
+    print(f"  이평선 산출 가능(상장 {max(MA_WINDOWS)}일 이상): {after_value:,} -> {len(out):,}")
     out["score"] = (out["chart_score"] + out["fin_score"]).clip(0, 100)
     hits = out[out["chart_score"] > 0].sort_values("score", ascending=False).head(args.top)
     print(f"필터: {before:,} -> {len(out):,}종목, 조건 충족 {len(hits):,}종목")
