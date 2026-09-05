@@ -1,0 +1,35 @@
+name: probe
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: KRX
+        continue-on-error: true
+        run: |
+          curl -s -o /dev/null -w "홈페이지 HTTP=%{http_code}\n" "http://data.krx.co.kr/"
+          curl -s -w "\nAPI HTTP=%{http_code}\n" \
+            -X POST "http://data.krx.co.kr/comm/bldAttendant/getJsonData.cmd" \
+            -H "User-Agent: Mozilla/5.0" \
+            -H "Referer: http://data.krx.co.kr/" \
+            -d "bld=dbms/MDC/STAT/standard/MDCSTAT01501&mktId=STK&trdDd=20260904" | head -c 400
+
+      - name: DART
+        continue-on-error: true
+        env:
+          DART_API_KEY: ${{ secrets.DART_API_KEY }}
+        run: |
+          echo "키 길이: ${#DART_API_KEY}"
+          curl -s "https://opendart.fss.or.kr/api/list.json?crtfc_key=$DART_API_KEY&bgn_de=20260901&end_de=20260905&page_count=1" | head -c 300
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: yfinance
+        continue-on-error: true
+        run: |
+          pip install -q yfinance
+          python -c "import yfinance as yf; df=yf.download('005930.KS', period='1mo', progress=False); print('행 수:', len(df)); print(df.tail(3))"
