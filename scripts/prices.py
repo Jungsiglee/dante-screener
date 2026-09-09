@@ -234,13 +234,20 @@ def main() -> int:
                     help="한 회차에 판별할 미확인 종목 수")
     ap.add_argument("--budget-min", type=float, default=32,
                     help="이 시간을 넘기면 저장하고 정상 종료 (워크플로 타임아웃보다 작게)")
+    ap.add_argument("--rebuild", action="store_true",
+                    help="기존 parquet 을 무시하고 전 종목을 처음부터 다시 받는다 "
+                         "(--days 를 늘려 과거 구간을 확장할 때 사용)")
     args = ap.parse_args()
     _BUDGET = args.budget_min * 60
 
     data_dir = Path(args.data)
     close_p, vol_p = data_dir / "close.parquet", data_dir / "volume.parquet"
     end = datetime.strptime(args.end, "%Y%m%d").date() if args.end else date.today()
-    close, volume = load(close_p), load(vol_p)
+    if args.rebuild:
+        print("--rebuild: 기존 일봉을 버리고 전체를 다시 받습니다 (심볼 캐시는 유지)")
+        close = volume = None
+    else:
+        close, volume = load(close_p), load(vol_p)
 
     names = dart_listed()
     print(f"DART 상장사: {len(names):,}종목")
